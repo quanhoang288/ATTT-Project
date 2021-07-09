@@ -1,0 +1,31 @@
+.list-group {
+    max-height: 100vh;
+    overflow: hidden;
+}
+
+.list-group:hover {
+    overflow-y: scroll;
+}
+
+#chat-list {
+    height: 100vh;
+}
+
+#chat-list li {
+    text-align: left;
+
+}
+
+#chat-list li:hover {
+    background: #fafafa;
+    cursor: pointer;
+}
+
+#user-list li.user:hover {
+    background: #fafafa;
+    cursor: pointer;
+}
+
+#users:hover {
+    background: #ffff
+}

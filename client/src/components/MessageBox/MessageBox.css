@@ -1,0 +1,23 @@
+#messages {
+    max-height: 85vh;
+    overflow: hidden;
+}
+
+#messages:hover {
+    overflow-y: scroll;
+}
+
+#messages li {
+    width: fit-content;
+    background: #e2e1e1;
+    margin-top: 1rem;
+    text-align: left;
+    border: 1px solid #fafafa;
+    border-radius: 20px;
+
+}
+
+.offset-6 li {
+    background: #0037ff !important;
+    color: #ffff;
+}
