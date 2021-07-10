@@ -17,7 +17,7 @@ const MessageBox = props => {
         const fetchData = async () => {
             const otherUserId = conversation.members.find((m) => m !== currentUser._id);
             try {
-                const res = await axios.get(`${HOST_URL}/users/${otherUserId ? otherUserId : currentUser._id}`);
+                const res = await axios.get(`${HOST_URL}/users/${otherUserId}`);
                 setOtherUser(res.data);
             } catch (err) {
                 console.log(err);
@@ -26,7 +26,7 @@ const MessageBox = props => {
         if (conversation)
             fetchData();
         
-    }, [conversation]);
+    }, [conversation, currentUser]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -60,12 +60,12 @@ const MessageBox = props => {
                                     if (m.sender === currentUser._id)
                                         return (
                                             <div className="col p-0 offset-6 w-auto" ref={scrollRef}>
-                                                <li className="list-group-item float-right">{m.text}</li>
+                                                <li className="list-group-item float-right" key={m._id}>{m.text}</li>
                                             </div>
                                         );
                                     return (
                                         <div className="col-md-6 p-0 w-auto" ref={scrollRef}>
-                                            <li className="list-group-item">{m.text}</li>
+                                            <li className="list-group-item" key={m._id}>{m.text}</li>
                                         </div>
                                     ); 
 

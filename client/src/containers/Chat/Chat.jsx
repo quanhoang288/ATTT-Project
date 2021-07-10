@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useRef, useState } from 'react';
 import MessageBox from '../../components/MessageBox/MessageBox';
 import ChatList from '../../components/ChatList/ChatList';
 import Header from '../../components/Header/Header';
@@ -6,6 +6,7 @@ import { HOST_URL } from '../../config';
 import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 import './Chat.css';
+import {io} from 'socket.io-client';
 
 const Chat = props => {
     const {user} = useContext(AuthContext);
@@ -16,6 +17,9 @@ const Chat = props => {
     const [chatList, setChatList] = useState([]);
     const [messages, setMessages] = useState([]);
     const [newMessage, setNewMessage] = useState('');
+    const [arrivalMessage, setArrivalMessage] = useState(null);
+    const socket = useRef();
+    
     const fetchConversations = async () => {
         try {
             const res = await axios.get(`${HOST_URL}/conversations/${user._id}`);
@@ -25,26 +29,6 @@ const Chat = props => {
         }
     }
 
-    useEffect(() => {
-        fetchConversations();
-    }, []);
-
-    useEffect( ()=> {
-        const fetchConversationMessages = async (id) => {
-            try {
-                const res = await axios.get(`${HOST_URL}/messages/${id}`);
-                if (res.data)
-                    setMessages(res.data);
-            } catch (err) {
-                console.log(err);
-            }
-        }
-        if (currentChat) 
-            fetchConversationMessages(currentChat._id);
-    }, [currentChat]);
-
-
-
     const toggleDisplay = () => {
         setDisplayChat(!displayChat);
     }
@@ -52,7 +36,8 @@ const Chat = props => {
     const handleUserClick = async () => {
         try{
             const res = await axios.get(`${HOST_URL}/users`);
-            setUserList(res.data);
+            const users = res.data.filter(u => u._id !== user._id);
+            setUserList(users);
         } catch (err) {
             console.log(err);
         }
@@ -129,19 +114,89 @@ const Chat = props => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        let receiverId = currentChat ? currentChat.members.find(member => member !== user._id) : newUserId;
+
         if (newMessage !== '') {
+
+            socket.current.emit('sendMessage', {
+                senderId: user._id, 
+                receiverId: receiverId, 
+                text: newMessage
+            });
+
             if (currentChat) {
                 const savedMessage = await saveMessage(user._id, currentChat._id, newMessage);
                 addNewMessage(savedMessage);
             }
             else {
                 const newConversation = await initializeConversation(user._id, newUserId);
-                const savedMessage = await saveMessage(user._id, newConversation._id, newMessage);
-                addNewMessage(savedMessage);
+
+                // const savedMessage = await saveMessage(user._id, newConversation._id, newMessage);
+                // addNewMessage(savedMessage);
+
+                await saveMessage(user._id, newConversation._id, newMessage);
+                setCurrentChat(newConversation);
+                setNewUserId(null);
             }
         }
 
     }
+
+    useEffect(() => {
+        fetchConversations();
+        socket.current = io('ws://localhost:2000');
+        socket.current.on('getMessage', data => {
+
+            setArrivalMessage({
+                sender: data.senderId,
+                text: data.text, 
+                createdAt: Date.now(),
+            });
+        });
+    }, []);
+
+    useEffect(() => {
+        socket.current.emit("addUser", user._id)
+
+    }, [user]);
+
+
+    useEffect(() => {
+        fetchConversations();
+        arrivalMessage && (currentChat?.members.includes(arrivalMessage.sender) || (newUserId && arrivalMessage.sender == newUserId)) &&
+        setMessages(prev => [...prev, arrivalMessage]);
+        
+    }, [arrivalMessage]);
+
+    useEffect(() => {
+        fetchConversations();
+    }, [messages]);
+
+
+
+
+    useEffect(() => {
+        const fetchConversationMessages = async (id) => {
+            try {
+                const res = await axios.get(`${HOST_URL}/messages/${id}`);
+                if (res.data)
+                    setMessages(res.data);
+            } catch (err) {
+                console.log(err);
+            }
+        }
+        if (currentChat) {
+            fetchConversationMessages(currentChat._id);
+        }
+
+    }, [currentChat]);
+
+   
+
+
+
+    
 
 
 
