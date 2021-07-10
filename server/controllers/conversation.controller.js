@@ -14,15 +14,15 @@ module.exports.findAll = async function (req, res) {
             ]
         });
         if (conversation)
-            res.status(200).json(conversation);
-        res.status(404).json("No conversation found");
+            return res.status(200).json(conversation);
+        return res.status(404).json("No conversation found");
     }
     else {
         // get all conversations
         const conversations = await Conversation.find();
         if (conversations)
-            res.status(200).json(conversations);
-        res.status(404).json("No conversation found");
+            return res.status(200).json(conversations);
+        return res.status(404).json("No conversation found");
     }
 }
 
@@ -33,9 +33,9 @@ module.exports.create = async function (req, res) {
 
     try {
         const savedConversation = await newConversation.save();
-        res.status(201).json(savedConversation);
+        return res.status(201).json(savedConversation);
     } catch (err) {
-        res.status(500).json(err);
+        return res.status(500).json(err);
     }
 }
 
@@ -43,10 +43,10 @@ module.exports.getConversationsByUserId = async function (req, res) {
     try {
         const conversations = await Conversation.find({
             members: { $in: [req.params.userId] }
-        });
-        res.status(200).json(conversations);
+        }).sort({updatedAt: -1});
+        return res.status(200).json(conversations);
     } catch (err) {
-        res.status(500).json(err);
+        return res.status(500).json(err);
     }
 }
 

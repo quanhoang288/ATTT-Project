@@ -3,16 +3,24 @@ const Conversation = require('../models/conversation.model');
 const mongo = require('mongodb');
 module.exports.create = async function(req, res) {
     try {
-        console.log(req.body.conversationId);
+
         const conversationId = new mongo.ObjectID(req.body.conversationId);
-        const conversation = await Conversation.findOne({_id: conversationId});
-        console.log(conversation.members);
-        console.log(req.body.sender);
+        let conversation = await Conversation.findOne({_id: conversationId});
         if (!conversation.members.includes(req.body.sender)) {
             return res.status(400).json('Sender id is not in the conversation');
         }
+
         const newMessage = new Message(req.body);
         const savedMessage = await newMessage.save();
+        console.log(savedMessage.createdAt);
+
+        const updatedConversation = await Conversation.findOneAndUpdate(
+            {_id: conversationId},
+            {updatedAt: savedMessage.createdAt},
+            {new: true}
+        );
+        console.log(updatedConversation)
+
         return res.status(201).json(savedMessage);
     } catch (err) {
         console.log(err);
@@ -48,7 +56,5 @@ module.exports.getLatestMessageByConversationId = async function (req, res) {
     }
 }
 
-module.exports.findOne = function(req, res) {
 
-}
 
