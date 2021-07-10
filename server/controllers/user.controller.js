@@ -21,7 +21,6 @@ module.exports.findOne = async function (req, res) {
     try {
         const id = new mongo.ObjectID(req.params.id);
         const user = await User.findOne({_id: id});
-        console.log(user);
         if (user) {
             return res.status(200).json(user);
         }
