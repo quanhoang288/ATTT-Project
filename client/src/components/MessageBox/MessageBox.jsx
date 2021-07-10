@@ -79,7 +79,7 @@ const MessageBox = props => {
 
                     <div className="card-footer">
                         <form className="input-group mt-3" onSubmit={props.handleSubmit}>
-                            <input type="text" name="message" id="message" className="form-control" onChange={props.handleNewMessageChange} value={newMessage} />
+                            <input type="text" name="message" id="message" className="form-control" autoComplete="off" onChange={props.handleNewMessageChange} value={newMessage} />
                             <div className="input-group-append">
                                 <button type="submit" className="btn btn-outline-primary">Send</button>
                             </div>
