@@ -10,9 +10,8 @@ const ChatItem = (props) => {
     useEffect(() => {
         const fetchData = async () => {
             const friendId = conversation.members.find((m) => m !== currentUser._id);
-            // console.log(friendId);
             try {
-                const res = await axios.get(`${HOST_URL}/users/${friendId ? friendId : currentUser._id}`);
+                const res = await axios.get(`${HOST_URL}/users/${friendId}`);
                 setUser(res.data);
             } catch (err) {
                 console.log(err);
@@ -33,12 +32,20 @@ const ChatItem = (props) => {
         }
         fetchLatestMessage();
     }, [user]);
+
+    const formatMessage = message => {
+        if (message && message.length > 15) {
+            return message.substring(0, 15) + '...';
+        }
+        return message;
+        
+    }
     return (
         <div>
             <a className="btn btn-link text-decoration-none p-0 text-info">{user?.name}</a>
             
             <p style={{display: "flex", justifyContent: "space-between", alignItems: "baseline"}}>
-                <span> {latestMessage?.sender === currentUser._id ? 'You' : user?.name}: {latestMessage?.text} </span>
+                <span> {latestMessage?.sender === currentUser._id ? 'You' : user?.name}: {formatMessage(latestMessage?.text)} </span>
                 <span style={{fontSize: '12px'}}>{format(latestMessage?.createdAt)}</span>
             </p>
         </div>
