@@ -8,16 +8,28 @@ import {
   Route,
   Redirect
 } from "react-router-dom";
-import { useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from './context/AuthContext';
+import { createSignalProtocolManager, SignalServerStore } from './signal/SignalGateway';
 function App() {
   const {user} = useContext(AuthContext);
+  const signalServer = new SignalServerStore();
+  const [signalProtocolManagerUser, setSignalProtocolManagerUser] = useState(null);
   console.log(user);
+  useEffect(() => {
+    if (user) {
+      console.log('creating new signal manager');
+      createSignalProtocolManager(user._id, signalServer)
+        .then(signalProtocolManagerUser => {
+          setSignalProtocolManagerUser(signalProtocolManagerUser);
+        });
+    }
+  }, [user]);
   return (
     <Router>
       <Switch>
         <Route path='/' exact>
-          {user ? <Chat/> : <Signin/>}
+          {user ? <Chat signalProtocolManagerUser={signalProtocolManagerUser} /> : <Signin/>}
         </Route>
         
         <Route path='/signin' exact>

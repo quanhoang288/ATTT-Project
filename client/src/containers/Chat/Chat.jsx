@@ -8,7 +8,12 @@ import axios from 'axios';
 import './Chat.css';
 import {io} from 'socket.io-client';
 
+// signal dependency import 
+import { createSignalProtocolManager, SignalServerStore } from "../../signal/SignalGateway";
+
 const Chat = props => {
+    
+    
     const {user} = useContext(AuthContext);
     const [currentChat, setCurrentChat] = useState(null);
     const [newUserId, setNewUserId] = useState(null);
@@ -20,6 +25,12 @@ const Chat = props => {
     const [arrivalMessage, setArrivalMessage] = useState(null);
     const socket = useRef();
     
+    
+    // new signal code 
+    const [signalProtocolManagerUser, setSignalProtocolManagerUser] = useState(null);
+
+
+
     const fetchConversations = async () => {
         try {
             const res = await axios.get(`${HOST_URL}/conversations/${user._id}`);
@@ -119,6 +130,18 @@ const Chat = props => {
 
         if (newMessage !== '') {
 
+
+            // new signal code 
+            let encryptedMessage = await signalProtocolManagerUser.encryptMessageAsync(receiverId, newMessage);
+            console.log(encryptedMessage);
+            
+
+            socket.current.emit('sendEncryptedMessage', {
+                senderId: user._id, 
+                receiverId: receiverId, 
+                message: encryptedMessage,
+            })
+
             socket.current.emit('sendMessage', {
                 senderId: user._id, 
                 receiverId: receiverId, 
@@ -143,10 +166,19 @@ const Chat = props => {
 
     }
 
-    useEffect(() => {
+
+
+    useEffect(async () => {
+        
+        console.log('first render hook');
         fetchConversations();
         socket.current = io('ws://localhost:2000');
-        socket.current.on('getMessage', data => {
+
+
+        //receive new message from server 
+        socket.current.on('getMessage', async (data) => {
+            console.log(data);
+
 
             setArrivalMessage({
                 sender: data.senderId,
@@ -154,15 +186,51 @@ const Chat = props => {
                 createdAt: Date.now(),
             });
         });
+
+        socket.current.on('getUsers', users => {
+            console.log(users);
+        });
+
+
+
     }, []);
 
+
+
+    // new signal code 
+    useEffect(()=> {
+        // get encrypted message
+        socket.current.on('getEncryptedMessage', async data => {
+            console.log('getting encrypted message...');
+            console.log(signalProtocolManagerUser);
+            const message = data.message;
+            if (signalProtocolManagerUser) {
+                let decryptedMessage = await signalProtocolManagerUser.decryptMessageAsync(data.senderId, message);
+                console.log(decryptedMessage);
+            }
+
+            
+        });
+    }, [signalProtocolManagerUser]);
+
+
+
     useEffect(() => {
-        socket.current.emit("addUser", user._id)
+        console.log('new user hook');
+        socket.current.emit("addUser", user._id);
+        
+        // new signal code 
+        const initSignalManager = async (user) => {
+            const signalProtocolManagerUser = await createSignalProtocolManager(user._id, new SignalServerStore());
+            setSignalProtocolManagerUser(signalProtocolManagerUser);
+        }
+        initSignalManager(user);
 
     }, [user]);
 
 
     useEffect(() => {
+        console.log('arrival message hook');
         fetchConversations();
         arrivalMessage && (currentChat?.members.includes(arrivalMessage.sender) || (newUserId && arrivalMessage.sender == newUserId)) &&
         setMessages(prev => [...prev, arrivalMessage]);
@@ -170,6 +238,7 @@ const Chat = props => {
     }, [arrivalMessage]);
 
     useEffect(() => {
+        console.log('messages hook');
         fetchConversations();
     }, [messages]);
 
