@@ -29,24 +29,39 @@ module.exports.create = async function(req, res) {
 }
 
 module.exports.getMessagesByConversationId = async function(req, res) {
+    const userId = req.query.userId;
     try {
         const messages = await Message.find({
             conversationId: req.params.conversationId
         });
-        return res.status(200).json(messages);
+        const filteredMessages = messages.filter(m => {
+            const senderId = m.sender;
+            const type = m.type;
+            if (senderId === userId && type === 'RSA')
+                return false;
+            if (senderId !== userId && type === 'AES')
+                return false;
+            return true;
+        });
+        return res.status(200).json(filteredMessages);
     } catch (err) {
+        console.log(err)
         return res.status(500).json(err);
     }
 }
 
 module.exports.getLatestMessageByConversationId = async function (req, res) {
+    const userId = req.query.userId;
     try {
 
         const messages = await Message.find({
             conversationId: req.params.conversationId
-        }).sort({createdAt: -1}).limit(1);
+        }).sort({createdAt: -1}).limit(2);
+        console.log(messages);
         if (messages.length > 0) {
-            return res.status(200).json(messages[0]);
+            const [aesMessage, rsaMessage] = messages;
+            
+            return rsaMessage.sender === userId ? res.status(200).json(aesMessage) : res.status(200).json(rsaMessage);
         }
         return res.status(404).json("No message found");
         
