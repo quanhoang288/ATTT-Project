@@ -49,11 +49,14 @@ const authRoute = require('./routes/auth.router');
 const userRoute = require('./routes/user.router');
 const messageRoute = require('./routes/message.router');
 const conversationRoute = require('./routes/conversation.router');
+const keyRoute = require('./routes/key.router');
 
 app.use('/api/auth', authRoute);
 app.use('/api/users', userRoute);
 app.use('/api/messages', messageRoute);
 app.use('/api/conversations', conversationRoute);
+app.use('/api/keys', keyRoute);
+
 
 
 
@@ -91,10 +94,27 @@ io.on("connection", function (socket) {
       io.emit("getUsers", users);
     })
 
-    // send and get message
-    socket.on('sendMessage', ({senderId, receiverId, text}) => {
+    socket.on('sendEncryptedMessage', ({senderId, receiverId, message}) => {
+      console.log('sending encrypted message...')
       const receiver = getUser(receiverId);
       if (receiver) {
+        console.log('found user online');
+        io.to(receiver.socketId).emit('getEncryptedMessage', {
+          senderId: senderId,
+          message: message
+        });
+      }
+    });
+
+    // send and get message
+    socket.on('sendMessage', ({senderId, receiverId, text}) => {
+      console.log('sending message...');
+      console.log('Receiver id: ' + receiverId);
+      console.log(users);
+      const receiver = getUser(receiverId);
+      console.log(receiver);
+      if (receiver) {
+        console.log('user online');
         io.to(receiver.socketId).emit('getMessage', {
           senderId,
           text

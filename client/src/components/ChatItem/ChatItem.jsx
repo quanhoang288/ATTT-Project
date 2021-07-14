@@ -2,11 +2,29 @@ import axios from 'axios';
 import React, { useEffect, useState } from 'react';
 import {HOST_URL} from '../../config';
 import {format} from 'timeago.js';
+import {RSAParse} from '../../helper';
+// cryptico dependencies
+import {decrypt, decryptAESCBC} from 'cryptico';
+
 const ChatItem = (props) => {
     const [user, setUser] = useState(null);
     const [latestMessage, setLastestMessage] = useState(null);
     const currentUser = props.currentUser;
     const conversation = props.conversation;
+
+    const decryptMessage = (ciphertext, type='RSA') => {
+        if (type === 'RSA') {
+            const userKey = RSAParse(localStorage.getItem(`${currentUser._id}_key`));
+            const decryptedMessage = decrypt(ciphertext, userKey);
+            return decryptedMessage.plaintext;
+        }
+
+        const privateAesKey = JSON.parse(localStorage.getItem(`${currentUser._id}_aes_key`));
+        return decryptAESCBC(ciphertext, privateAesKey);
+
+
+    }
+
     useEffect(() => {
         const fetchData = async () => {
             const friendId = conversation.members.find((m) => m !== currentUser._id);
@@ -24,8 +42,10 @@ const ChatItem = (props) => {
     useEffect(() => {
         const fetchLatestMessage = async () => {
             try {
-                const res = await axios.get(`${HOST_URL}/messages/${conversation._id}/latest`);
-                setLastestMessage(res.data);
+                const res = await axios.get(`${HOST_URL}/messages/${conversation._id}/latest?userId=${currentUser._id}`);
+                let message = res.data;
+                message.text = decryptMessage(message.text, message.type);
+                setLastestMessage(message);
             } catch (err) {
                 console.log(err);
             }

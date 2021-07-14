@@ -8,7 +8,7 @@ router.post('/', controller.create);
 // get conversation between 2 users 
 router.get('/', controller.findAll);
 
-// get all conversation of a users
+// get all conversation of a user
 router.get('/:userId', controller.getConversationsByUserId);
 
 

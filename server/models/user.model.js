@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const argon2 = require('argon2');
 
 const userSchema = new mongoose.Schema(
     {
@@ -20,9 +20,10 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.methods = {
-    authenticate: function (password) {
+    authenticate: async function (password) {
         //TODO: authenticate password
-        return this.password === password;
+        return await argon2.verify(this.password, password);
+
     }
 };
 
