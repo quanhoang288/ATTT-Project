@@ -7,9 +7,11 @@ import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 import './Chat.css';
 import {io} from 'socket.io-client';
+import {RSAParse} from '../../helper';
+// cryptico dependencies
+import {encrypt, decrypt, encryptAESCBC, decryptAESCBC} from 'cryptico';
 
-// signal dependency import 
-import { createSignalProtocolManager, SignalServerStore } from "../../signal/SignalGateway";
+
 
 const Chat = props => {
     
@@ -26,9 +28,7 @@ const Chat = props => {
     const socket = useRef();
     
     
-    // new signal code 
-    const [signalProtocolManagerUser, setSignalProtocolManagerUser] = useState(null);
-
+    
 
 
     const fetchConversations = async () => {
@@ -88,15 +88,16 @@ const Chat = props => {
         setNewMessage(e.target.value);
     }
 
-    const saveMessage = async (senderId, conversationId, text) => {
-        const newMessage = {
+    const saveMessage = async (senderId, conversationId, text, type) => {
+        const newEncryptedMessage = {
             sender: senderId, 
             conversationId: conversationId, 
-            text: text
+            text: text,
+            type: type
         };
-        
+
         try {
-            const res = await axios.post(`${HOST_URL}/messages`, newMessage);
+            const res = await axios.post(`${HOST_URL}/messages`, newEncryptedMessage);
             setNewMessage('');
             return res.data;
         } catch (err) {
@@ -123,6 +124,27 @@ const Chat = props => {
         setMessages(newMessages);
     }
 
+
+
+    const decryptMessage = (ciphertext, type='RSA') => {
+        if (type === 'RSA') {
+            const userKey = RSAParse(localStorage.getItem(`${user._id}_key`));
+            console.log(userKey);
+            const decryptedMessage = decrypt(ciphertext, userKey);
+            return decryptedMessage.plaintext;
+        }
+
+        const privateAesKey = JSON.parse(localStorage.getItem(`${user._id}_aes_key`));
+        return decryptAESCBC(ciphertext, privateAesKey);
+
+
+    }
+
+    const getReceiverPublicKey = async receiverId => {
+        const res = await axios.get(`${HOST_URL}/keys/${receiverId}`);
+        return res.data;
+    }
+
     const handleSubmit = async (e) => {
         e.preventDefault();
 
@@ -130,35 +152,55 @@ const Chat = props => {
 
         if (newMessage !== '') {
 
+            
 
-            // new signal code 
-            let encryptedMessage = await signalProtocolManagerUser.encryptMessageAsync(receiverId, newMessage);
-            console.log(encryptedMessage);
+
+            // new rsa encryption code 
+            let receiverPublicKey = await getReceiverPublicKey(receiverId);
+            const rsaEncryptedMessage = encrypt(newMessage, receiverPublicKey);
+
+            // new aes encryption code
+            const privateAesKey = JSON.parse(localStorage.getItem(`${user._id}_aes_key`));
+            const aesEncryptedMessage = encryptAESCBC(newMessage, privateAesKey);
             
 
             socket.current.emit('sendEncryptedMessage', {
                 senderId: user._id, 
                 receiverId: receiverId, 
-                message: encryptedMessage,
-            })
-
-            socket.current.emit('sendMessage', {
-                senderId: user._id, 
-                receiverId: receiverId, 
-                text: newMessage
+                message: rsaEncryptedMessage.cipher,
             });
 
+
+
             if (currentChat) {
-                const savedMessage = await saveMessage(user._id, currentChat._id, newMessage);
-                addNewMessage(savedMessage);
+                // const savedMessage = await saveMessage(user._id, currentChat._id, newMessage);
+                
+                // new rsa encrypted message
+                await saveMessage(user._id, currentChat._id, rsaEncryptedMessage.cipher, 'RSA');
+
+                // new aes encrypted message 
+                await saveMessage(user._id, currentChat._id, aesEncryptedMessage, 'AES');
+                
+                addNewMessage({
+                    sender: user._id,
+                    text: newMessage, 
+                    createdAt: Date.now(),
+                });
             }
             else {
                 const newConversation = await initializeConversation(user._id, newUserId);
 
-                // const savedMessage = await saveMessage(user._id, newConversation._id, newMessage);
-                // addNewMessage(savedMessage);
+             
 
-                await saveMessage(user._id, newConversation._id, newMessage);
+                // new rsa encrypted message
+                await saveMessage(user._id, newConversation._id, rsaEncryptedMessage.cipher, 'RSA');
+
+
+                // new aes encrypted message 
+                await saveMessage(user._id, newConversation._id, aesEncryptedMessage, 'AES');
+                
+
+
                 setCurrentChat(newConversation);
                 setNewUserId(null);
             }
@@ -170,15 +212,13 @@ const Chat = props => {
 
     useEffect(async () => {
         
-        console.log('first render hook');
+        // console.log('first render hook');
         fetchConversations();
         socket.current = io('ws://localhost:2000');
 
 
         //receive new message from server 
         socket.current.on('getMessage', async (data) => {
-            console.log(data);
-
 
             setArrivalMessage({
                 sender: data.senderId,
@@ -191,46 +231,72 @@ const Chat = props => {
             console.log(users);
         });
 
+        // get encrypted message
+        socket.current.on('getEncryptedMessage', async data => {
+            console.log('getting encrypted message...');
+            console.log(data);
+            const message = data.message;
+            let decryptedMessage = decryptMessage(message);
+            console.log(decryptedMessage);
+
+            setArrivalMessage({
+                sender: data.senderId,
+                text: decryptedMessage, 
+                createdAt: Date.now(),
+            });
+
+            
+        });
+
 
 
     }, []);
 
 
 
-    // new signal code 
-    useEffect(()=> {
-        // get encrypted message
-        socket.current.on('getEncryptedMessage', async data => {
-            console.log('getting encrypted message...');
-            console.log(signalProtocolManagerUser);
-            const message = data.message;
-            if (signalProtocolManagerUser) {
-                let decryptedMessage = await signalProtocolManagerUser.decryptMessageAsync(data.senderId, message);
-                console.log(decryptedMessage);
-            }
+    // // new signal code 
+    // useEffect(() => {
+
+    //     // get encrypted message
+    //     socket.current.on('getEncryptedMessage', async data => {
+    //         console.log('getting encrypted message...');
+    //         console.log(data);
+    //         const message = data.message;
+    //         if (signalProtocolManagerUser) {
+    //             let decryptedMessage = await signalProtocolManagerUser.decryptMessageAsync(data.senderId, message);
+    //             console.log(decryptedMessage);
+
+    //             setArrivalMessage({
+    //                 sender: data.senderId,
+    //                 text: decryptedMessage, 
+    //                 createdAt: Date.now(),
+    //             });
+    //         }
 
             
-        });
-    }, [signalProtocolManagerUser]);
+    //     });
+    // }, [signalProtocolManagerUser]);
 
 
 
     useEffect(() => {
-        console.log('new user hook');
+        // console.log('new user hook');
         socket.current.emit("addUser", user._id);
         
         // new signal code 
-        const initSignalManager = async (user) => {
-            const signalProtocolManagerUser = await createSignalProtocolManager(user._id, new SignalServerStore());
-            setSignalProtocolManagerUser(signalProtocolManagerUser);
-        }
-        initSignalManager(user);
+        // const initSignalManager = async (user) => {
+        //     console.log('initializing new signal manager...');
+        //     const signalProtocolManagerUser = await createSignalProtocolManager(user._id, new SignalServerStore());
+        //     console.log(signalProtocolManagerUser);
+        //     setSignalProtocolManagerUser(signalProtocolManagerUser);
+        // }
+        // initSignalManager(user);
 
     }, [user]);
 
 
     useEffect(() => {
-        console.log('arrival message hook');
+        // console.log('arrival message hook');
         fetchConversations();
         arrivalMessage && (currentChat?.members.includes(arrivalMessage.sender) || (newUserId && arrivalMessage.sender == newUserId)) &&
         setMessages(prev => [...prev, arrivalMessage]);
@@ -238,7 +304,7 @@ const Chat = props => {
     }, [arrivalMessage]);
 
     useEffect(() => {
-        console.log('messages hook');
+        // console.log('messages hook');
         fetchConversations();
     }, [messages]);
 
@@ -248,9 +314,18 @@ const Chat = props => {
     useEffect(() => {
         const fetchConversationMessages = async (id) => {
             try {
-                const res = await axios.get(`${HOST_URL}/messages/${id}`);
-                if (res.data)
-                    setMessages(res.data);
+                const res = await axios.get(`${HOST_URL}/messages/${id}?userId=${user._id}`);
+                if (res.data) {
+                    const messages = res.data;
+                    const decryptedMessages = messages.map(m => ({
+                        ...m,
+                        text: decryptMessage(m.text, m.type)
+                    }));
+                    console.log(decryptedMessages);
+                    setMessages(decryptedMessages);
+                    // setMessages(res.data);
+                }
+                    
             } catch (err) {
                 console.log(err);
             }

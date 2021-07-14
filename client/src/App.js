@@ -10,26 +10,24 @@ import {
 } from "react-router-dom";
 import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from './context/AuthContext';
-import { createSignalProtocolManager, SignalServerStore } from './signal/SignalGateway';
+// import { createSignalProtocolManager, SignalServerStore } from './signal/SignalGateway';
+
 function App() {
   const {user} = useContext(AuthContext);
-  const signalServer = new SignalServerStore();
-  const [signalProtocolManagerUser, setSignalProtocolManagerUser] = useState(null);
+  // const signalServer = new SignalServerStore();
+  // const [signalProtocolManagerUser, setSignalProtocolManagerUser] = useState(null);
   console.log(user);
-  useEffect(() => {
-    if (user) {
-      console.log('creating new signal manager');
-      createSignalProtocolManager(user._id, signalServer)
-        .then(signalProtocolManagerUser => {
-          setSignalProtocolManagerUser(signalProtocolManagerUser);
-        });
-    }
-  }, [user]);
+
+  // const handleLoginSuccess = async (user) => {
+  //   const signalProtocolManagerUser = await createSignalProtocolManager(user._id, signalServer);
+  //   setSignalProtocolManagerUser(signalProtocolManagerUser);
+  // }
+
   return (
     <Router>
       <Switch>
         <Route path='/' exact>
-          {user ? <Chat signalProtocolManagerUser={signalProtocolManagerUser} /> : <Signin/>}
+          {user ? <Chat /> : <Signin/>}
         </Route>
         
         <Route path='/signin' exact>
