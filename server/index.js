@@ -49,13 +49,14 @@ const authRoute = require('./routes/auth.router');
 const userRoute = require('./routes/user.router');
 const messageRoute = require('./routes/message.router');
 const conversationRoute = require('./routes/conversation.router');
-// const bundleRoute = require('./routes/bundle.router');
+const keyRoute = require('./routes/key.router');
 
 app.use('/api/auth', authRoute);
 app.use('/api/users', userRoute);
 app.use('/api/messages', messageRoute);
 app.use('/api/conversations', conversationRoute);
-// app.use('/api/bundles', bundleRoute);
+app.use('/api/keys', keyRoute);
+
 
 
 
