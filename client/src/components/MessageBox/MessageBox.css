@@ -1,5 +1,5 @@
 #messages {
-    max-height: 85vh;
+    max-height: 80vh;
     overflow: hidden;
 }
 
@@ -8,6 +8,7 @@
 }
 
 #messages li {
+    line-break: anywhere;
     width: fit-content;
     background: #e2e1e1;
     margin-top: 1rem;

@@ -5,7 +5,7 @@ const mongo = require('mongodb');
 module.exports.findAll = async function(req, res) {
 
     try {
-        const users = await User.find();
+        const users = await User.find().sort({name: -1});
         if (users) {
             return res.status(200).json(users);
         }
@@ -21,7 +21,6 @@ module.exports.findOne = async function (req, res) {
     try {
         const id = new mongo.ObjectID(req.params.id);
         const user = await User.findOne({_id: id});
-        console.log(user);
         if (user) {
             return res.status(200).json(user);
         }

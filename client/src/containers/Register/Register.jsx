@@ -5,6 +5,7 @@ import Header from '../../components/Header/Header';
 import {HOST_URL} from '../../config';
 import axios from 'axios';
 import { AuthContext } from '../../context/AuthContext';
+import {generateRSAKey, publicKeyString, generateAESKey} from 'cryptico';
 const Register = () => {
     const [registerInfo, setRegisterInfo] = useState({name: '', username: '', password: ''});
     const {dispatch} = useContext(AuthContext);
@@ -14,6 +15,16 @@ const Register = () => {
         try {
             const res = await axios.post(`${HOST_URL}/auth/signup`, registerInfo);
             console.log(res.data);
+            const user = res.data;
+            const userKey = generateRSAKey(user._id, 1024);
+            const privateAesKey = generateAESKey();
+            await axios.post(`${HOST_URL}/keys`, {
+                userId: user._id,
+                publicKey: publicKeyString(userKey)
+            });
+
+            localStorage.setItem(`${user._id}_key`, JSON.stringify(userKey.toJSON()));
+            localStorage.setItem(`${user._id}_aes_key`, JSON.stringify(privateAesKey));
             dispatch({type: "LOGIN_SUCCESS", payload: res.data});
             history.push('/');
         } catch (err) {
@@ -57,7 +68,7 @@ const Register = () => {
                 </div>
 
                 <div class="form-group row mb-0">
-                    <div class="col-md-4 offset-md-4">
+                    <div class="col-md-3 offset-md-6">
                         <button type="submit" class="btn btn-primary">
                             Register
                         </button>

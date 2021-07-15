@@ -51,7 +51,7 @@ const Signin = () => {
                 </div>
 
                 <div class="form-group row mb-0">
-                    <div class="col-md-4 offset-md-4">
+                    <div class="col-md-3 offset-md-6">
                         <button type="submit" class="btn btn-primary">
                             Sign in
                         </button>

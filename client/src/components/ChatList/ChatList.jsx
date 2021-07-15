@@ -44,7 +44,7 @@ const ChatList = props => {
             {props.displayChat ?
             <ul className="list-group" id="chat-list">
                 {chatList.map((conversation) => (
-                    <li className="list-group-item" onClick={() => {props.handleFetchConversation(conversation)}}>
+                    <li className="list-group-item" key={conversation._id} onClick={() => {props.handleFetchConversation(conversation)}}>
                         <ChatItem conversation={conversation} currentUser={props.currentUser} username="Quan AP" latestMessage="Hello there"/>
                     </li>
                 ))}
